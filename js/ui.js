@@ -27,6 +27,7 @@ export function getElements() {
     eventMsgEl: document.getElementById("eventMsg"),
 
     exportBtn: document.getElementById("exportBtn"),
+    exportPngBtn: document.getElementById("exportPngBtn"),
     importFile: document.getElementById("importFile"),
     clearBtn: document.getElementById("clearBtn"),
   };
@@ -39,7 +40,7 @@ export function setMsg(eventMsgEl, text, isError = false) {
 
 export function normalizeTimeInput(el, gridConfig, { allow24 }) {
   const m = parseTimeAny(el.value, { allow24 });
-  if (m == null) return; // keep what user typed
+  if (m == null) return;
   el.value = minutesToInputString(m, gridConfig.use12h, allow24);
 }
 
@@ -76,9 +77,7 @@ export function buildDaysCheckboxes(daysGridEl, gridConfig, onChange) {
     input.name = "days";
     input.value = day;
 
-    input.checked =
-      prevChecked.size > 0 ? prevChecked.has(day) : gridConfig.days.includes(day);
-
+    input.checked = prevChecked.size > 0 ? prevChecked.has(day) : gridConfig.days.includes(day);
     input.addEventListener("change", onChange);
 
     label.appendChild(input);
@@ -151,7 +150,6 @@ export function applySettingsToInputs(els, gridConfig, settings) {
   els.deleteEventBtn.style.display = "none";
   els.cancelEditBtn.style.display = "none";
 
-  // keep days sane if settings were weird
   if (!Array.isArray(gridConfig.days) || gridConfig.days.length === 0) {
     gridConfig.days = DEFAULT_DAYS.slice();
   }

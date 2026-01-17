@@ -94,7 +94,7 @@
         <div class="eventForm">
           <div class="control wide">
             <label>Title</label>
-            <input id="eventTitle" type="text" placeholder="e.g., English01" />
+            <input id="eventTitle" type="text" placeholder="e.g., English-01" />
           </div>
 
           <div class="control">
@@ -145,10 +145,14 @@
 
       <div class="toolsRow">
         <button id="exportBtn" class="secondary" type="button">Export JSON</button>
+
+        <button id="exportPngBtn" class="secondary" type="button">Export PNG</button>
+
         <label class="fileBtn secondary">
           Import JSON
           <input id="importFile" type="file" accept="application/json" hidden />
         </label>
+
         <button id="clearBtn" class="danger" type="button">Clear All</button>
       </div>
 
@@ -162,8 +166,8 @@
     </main>
 
     <footer class="footer">
-  <span id="footerCopy"></span>
-</footer>
+      <span id="footerCopy"></span>
+    </footer>
 
     <script type="module" src="./js/main.js"></script>
   </body>
