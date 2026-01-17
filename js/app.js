@@ -14,6 +14,9 @@ import {
   resetForm,
   startEdit,
   applySettingsToInputs,
+  buildRepeatDaysCheckboxes,
+  getRepeatDaysSelected,
+  setRepeatDaysSelected,
 } from "./ui.js";
 import { exportElementAsPng } from "./export.js";
 
@@ -38,12 +41,10 @@ export class App {
   }
 
   init() {
-    // Footer
     const year = new Date().getFullYear();
     const footerCopy = document.getElementById("footerCopy");
     if (footerCopy) footerCopy.textContent = `© ${year} Ali A-R9. All rights reserved.`;
 
-    // Load settings into config
     const s = this.state.settings;
     this.state.gridConfig.use12h = !!s.use12h;
     this.state.gridConfig.weekStart = s.weekStart ?? "Mon";
@@ -53,17 +54,17 @@ export class App {
     this.state.gridConfig.startMinutes = parseTimeAny(s.gridStart, { allow24: false }) ?? 0;
     this.state.gridConfig.endMinutes = parseTimeAny(s.gridEnd, { allow24: true }) ?? 1439;
 
-    // Apply settings to UI
     applySettingsToInputs(this.els, this.state.gridConfig, this.state.settings);
     buildDaysCheckboxes(this.els.daysGridEl, this.state.gridConfig, () => this.rebuildFromControls());
     rebuildEventDayOptions(this.els.eventDayEl, this.state.gridConfig);
     normalizeAllTimeInputs(this.els, this.state.gridConfig);
     rebuildTimeSuggestions(this.els.timeSuggestionsEl, this.state.gridConfig);
 
-    // Wire events
+    buildRepeatDaysCheckboxes(this.els.repeatDaysEl, this.state.gridConfig, () => {});
+    setRepeatDaysSelected([this.els.eventDayEl.value || this.state.gridConfig.days[0]]);
+
     this.wire();
 
-    // Initial render
     this.rebuildFromControls();
     resetForm(this.els, this.state);
     setMsg(this.els.eventMsgEl, "");
@@ -97,6 +98,15 @@ export class App {
     els.eventEndEl.addEventListener("blur", () =>
       normalizeTimeInput(els.eventEndEl, this.state.gridConfig, { allow24: true })
     );
+
+    // UX improvement:
+    // If user changes the Day dropdown and they haven't checked any repeat days,
+    // keep repeat selection synced to that single day.
+    els.eventDayEl.addEventListener("change", () => {
+      if (this.state.editingId) return;
+      const repeat = getRepeatDaysSelected();
+      if (repeat.length === 0) setRepeatDaysSelected([els.eventDayEl.value]);
+    });
 
     els.saveEventBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -228,6 +238,9 @@ export class App {
     rebuildEventDayOptions(els.eventDayEl, g);
     rebuildTimeSuggestions(els.timeSuggestionsEl, g);
 
+    buildRepeatDaysCheckboxes(els.repeatDaysEl, g, () => {});
+    if (!this.state.editingId) setRepeatDaysSelected([els.eventDayEl.value || g.days[0]]);
+
     this.render();
     resetForm(els, this.state);
     setMsg(els.eventMsgEl, "");
@@ -261,13 +274,14 @@ export class App {
       return setMsg(els.eventMsgEl, "Event must be inside the visible grid time range.", true);
     }
 
-    const candidate = { day, start, end, title, color };
-
-    if (hasConflict(this.state.events, candidate, this.state.editingId)) {
-      return setMsg(els.eventMsgEl, "Conflict: overlaps an existing event on this day.", true);
-    }
-
+    // Editing stays single-day
     if (this.state.editingId) {
+      const candidate = { day, start, end, title, color };
+
+      if (hasConflict(this.state.events, candidate, this.state.editingId)) {
+        return setMsg(els.eventMsgEl, "Conflict: overlaps an existing event on this day.", true);
+      }
+
       this.state.events = this.state.events.map((ev) =>
         ev.id === this.state.editingId ? { ...ev, ...candidate } : ev
       );
@@ -278,10 +292,46 @@ export class App {
       return;
     }
 
-    this.state.events.push({ id: uid(), ...candidate });
-    saveEvents(this.state.events);
-    this.render();
-    setMsg(els.eventMsgEl, "Added.");
+    // Adding: realistic repeat behavior
+    const checked = getRepeatDaysSelected().filter((d) => g.days.includes(d));
+    const targetDays = checked.length > 0 ? checked : [day];
+
+    const conflicts = [];
+    const added = [];
+
+    for (const d of targetDays) {
+      const candidate = { day: d, start, end, title, color };
+      if (hasConflict(this.state.events, candidate, null)) {
+        conflicts.push(d);
+      } else {
+        this.state.events.push({ id: uid(), ...candidate });
+        added.push(d);
+      }
+    }
+
+    if (added.length > 0) {
+      saveEvents(this.state.events);
+      this.render();
+    }
+
+    if (added.length === 0) {
+      return setMsg(
+        els.eventMsgEl,
+        `Could not add: conflict on ${conflicts.join(", ")}.`,
+        true
+      );
+    }
+
+    if (conflicts.length > 0) {
+      setMsg(
+        els.eventMsgEl,
+        `Added to ${added.join(", ")}. Skipped (conflict): ${conflicts.join(", ")}.`,
+        true
+      );
+    } else {
+      setMsg(els.eventMsgEl, added.length === 1 ? "Added." : `Added to ${added.length} days ✅`);
+    }
+
     resetForm(els, this.state);
   }
 
@@ -307,6 +357,9 @@ export class App {
         els.eventDayEl.value = day;
         els.eventStartEl.value = minutesToInputString(start, this.state.gridConfig.use12h, false);
         els.eventEndEl.value = minutesToInputString(end, this.state.gridConfig.use12h, true);
+
+        if (!this.state.editingId) setRepeatDaysSelected([day]);
+
         els.eventTitleEl.focus();
         setMsg(
           els.eventMsgEl,
@@ -393,7 +446,6 @@ export class App {
     try {
       setMsg(els.eventMsgEl, "Generating PNG…");
 
-      // Capture the grid only (clean screenshot)
       const grid = document.getElementById("grid");
       if (!grid) throw new Error("Grid not found.");
 

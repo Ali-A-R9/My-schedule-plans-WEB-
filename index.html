@@ -94,7 +94,7 @@
         <div class="eventForm">
           <div class="control wide">
             <label>Title</label>
-            <input id="eventTitle" type="text" placeholder="e.g., English-01" />
+            <input id="eventTitle" type="text" placeholder="e.g., Math 101" />
           </div>
 
           <div class="control">
@@ -131,6 +131,13 @@
           <div class="control">
             <label>Color</label>
             <input id="eventColor" type="color" value="#4f46e5" />
+          </div>
+
+          <!-- NEW: multi-day add -->
+          <div class="control wide">
+            <label>Repeat on</label>
+            <div class="daysGrid" id="repeatDays"></div>
+            <div class="hint">Tip: select multiple days to add the same event in one click.</div>
           </div>
 
           <div class="eventButtons">

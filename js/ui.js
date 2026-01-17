@@ -21,6 +21,8 @@ export function getElements() {
     eventEndEl: document.getElementById("eventEnd"),
     eventColorEl: document.getElementById("eventColor"),
 
+    repeatDaysEl: document.getElementById("repeatDays"),
+
     saveEventBtn: document.getElementById("saveEventBtn"),
     deleteEventBtn: document.getElementById("deleteEventBtn"),
     cancelEditBtn: document.getElementById("cancelEditBtn"),
@@ -103,6 +105,44 @@ export function rebuildEventDayOptions(eventDayEl, gridConfig) {
   }
 }
 
+/* ---------- NEW: Repeat-on UI ---------- */
+
+export function buildRepeatDaysCheckboxes(repeatDaysEl, gridConfig, onChange) {
+  if (!repeatDaysEl) return;
+
+  repeatDaysEl.innerHTML = "";
+
+  for (const day of gridConfig.days) {
+    const label = document.createElement("label");
+    label.className = "dayChip";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = "repeatDays";
+    input.value = day;
+    input.addEventListener("change", onChange);
+
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(day));
+    repeatDaysEl.appendChild(label);
+  }
+}
+
+export function getRepeatDaysSelected() {
+  const checked = document.querySelectorAll('input[name="repeatDays"]:checked');
+  return Array.from(checked).map((x) => x.value);
+}
+
+export function setRepeatDaysSelected(days) {
+  const set = new Set(days);
+  const inputs = document.querySelectorAll('input[name="repeatDays"]');
+  inputs.forEach((inp) => {
+    inp.checked = set.has(inp.value);
+  });
+}
+
+/* ---------- Form helpers ---------- */
+
 export function resetForm(els, state) {
   state.editingId = null;
   els.saveEventBtn.textContent = "Add Event";
@@ -118,6 +158,9 @@ export function resetForm(els, state) {
   const e = 10 * 60;
   els.eventStartEl.value = minutesToInputString(s, state.gridConfig.use12h, false);
   els.eventEndEl.value = minutesToInputString(e, state.gridConfig.use12h, true);
+
+  // default repeat = selected day only
+  setRepeatDaysSelected([els.eventDayEl.value]);
 }
 
 export function startEdit(els, state, id) {
@@ -135,6 +178,9 @@ export function startEdit(els, state, id) {
 
   els.eventStartEl.value = minutesToInputString(ev.start, state.gridConfig.use12h, false);
   els.eventEndEl.value = minutesToInputString(ev.end, state.gridConfig.use12h, true);
+
+  // editing stays single-day
+  setRepeatDaysSelected([ev.day]);
 }
 
 export function applySettingsToInputs(els, gridConfig, settings) {
